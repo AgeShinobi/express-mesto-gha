@@ -1,3 +1,4 @@
+/* eslint-disable import/no-extraneous-dependencies */
 const express = require('express');
 const mongoose = require('mongoose');
 
@@ -8,13 +9,12 @@ mongoose.connect(DATABASE_URL);
 
 const app = express();
 
-const { userRouter } = require('./routes/users');
-const { cardRouter } = require('./routes/cards');
+const { userRouter, cardRouter } = require('./routes');
 
 app.use(express.json());
 app.use((req, res, next) => {
   req.user = {
-    _id: '6446d8595c2d374a127869d8'
+    _id: '6446d8595c2d374a127869d8',
   };
 
   next();

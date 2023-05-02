@@ -1,10 +1,11 @@
 const User = require('../models/user');
 
 const {
+  STATUS_CREATED,
   STATUS_BAD_REQUEST,
   STATUS_NOT_FOUND,
   STATUS_INTERNAL_SERVER_ERROR,
-  DEFAULT_ERROR_MESSAGE
+  DEFAULT_ERROR_MESSAGE,
 } = require('../config');
 
 const getUsers = (req, res) => {
@@ -23,11 +24,14 @@ const getUser = (req, res) => {
   const { userId } = req.params;
 
   User.findById(userId)
+    .orFail(() => {
+      throw new Error('Not found');
+    })
     .then((user) => {
       res.send({ data: user });
     })
     .catch((e) => {
-      if (e.name === 'CastError') {
+      if (e.message === 'Not found') {
         res
           .status(STATUS_NOT_FOUND)
           .send({ message: 'Пользователь не найден' });
@@ -44,7 +48,7 @@ const createUser = (req, res) => {
 
   User.create({ name, about, avatar })
     .then((user) => {
-      res.status(201).send({ data: user });
+      res.status(STATUS_CREATED).send({ data: user });
     })
     .catch((e) => {
       if (e.name === 'ValidationError') {
@@ -69,7 +73,7 @@ const updateUserInfo = (req, res) => {
     {
       new: true,
       runValidators: true,
-    }
+    },
   )
     .orFail(() => {
       throw new Error('Not found');
@@ -100,7 +104,7 @@ const updateAvatar = (req, res) => {
     {
       new: true,
       runValidators: true,
-    }
+    },
   )
     .orFail(() => {
       throw new Error('Not found');
@@ -126,5 +130,5 @@ module.exports = {
   getUser,
   createUser,
   updateUserInfo,
-  updateAvatar
+  updateAvatar,
 };

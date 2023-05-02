@@ -1,3 +1,4 @@
+/* eslint-disable import/no-extraneous-dependencies */
 const express = require('express');
 
 const {
@@ -5,7 +6,7 @@ const {
   getUser,
   createUser,
   updateUserInfo,
-  updateAvatar
+  updateAvatar,
 } = require('../controllers/users');
 
 const userRouter = express.Router();
@@ -17,5 +18,5 @@ userRouter.patch('/users/me', updateUserInfo);
 userRouter.patch('/users/me/avatar', updateAvatar);
 
 module.exports = {
-  userRouter
+  userRouter,
 };
