@@ -28,10 +28,11 @@ const createCard = (req, res) => {
     .then((card) => card.populate('owner'))
     .then((card) => res.status(STATUS_CREATED).send({ data: card }))
     .catch((e) => {
-      if (e.message === 'ValidationError') {
+      const message = Object.values(e.errors).map((err) => err.message).join('; ');
+      if (e.name === 'ValidationError') {
         res
           .status(STATUS_BAD_REQUEST)
-          .send({ message: 'Переданы некорректные данные при создании карточки' });
+          .send({ message });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)
@@ -44,17 +45,14 @@ const deleteCard = (req, res) => {
   const { cardId } = req.params;
 
   Card.findByIdAndRemove(cardId)
-    .orFail(() => {
-      throw new Error('Not found');
-    })
     .then((card) => {
       res.send({ deletedCard: card });
     })
     .catch((e) => {
-      if (e.message === 'Not found') {
+      if (e.name === 'CastError') {
         res
           .status(STATUS_NOT_FOUND)
-          .send({ message: 'Карточка не найдена' });
+          .send({ message: 'Карточка с указанным _id не найдена' });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)
@@ -69,14 +67,14 @@ const cardLikeUpdate = (req, res, method) => {
     method,
     { new: true },
   )
-    .orFail(() => { throw new Error('ValidationError'); })
+    .orFail(() => { throw new Error('Not found'); })
     .then((card) => card.populate(['owner', 'likes']))
     .then((card) => res.send({ data: card }))
     .catch((e) => {
-      if (e.message === 'ValidationError') {
+      if (e.message === 'Not found') {
         res
           .status(STATUS_BAD_REQUEST)
-          .send({ message: 'Переданы некорректные данные' });
+          .send({ message: 'Карточка не найдена' });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)

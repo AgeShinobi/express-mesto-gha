@@ -24,17 +24,14 @@ const getUser = (req, res) => {
   const { userId } = req.params;
 
   User.findById(userId)
-    .orFail(() => {
-      throw new Error('Not found');
-    })
     .then((user) => {
       res.send({ data: user });
     })
     .catch((e) => {
-      if (e.message === 'Not found') {
+      if (e.name === 'CastError') {
         res
           .status(STATUS_NOT_FOUND)
-          .send({ message: 'Пользователь не найден' });
+          .send({ message: 'Пользователь с указанным _id не найден' });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)
@@ -82,10 +79,15 @@ const updateUserInfo = (req, res) => {
       res.send({ user });
     })
     .catch((e) => {
+      const message = Object.values(e.errors).map((err) => err.message).join('; ');
       if (e.message === 'Not found') {
         res
           .status(STATUS_NOT_FOUND)
           .send({ message: 'Пользователь не найден' });
+      } else if (e.name === 'ValidationError') {
+        res
+          .status(STATUS_BAD_REQUEST)
+          .send({ message });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)
@@ -113,10 +115,15 @@ const updateAvatar = (req, res) => {
       res.send({ user });
     })
     .catch((e) => {
+      const message = Object.values(e.errors).map((err) => err.message).join('; ');
       if (e.message === 'Not found') {
         res
           .status(STATUS_NOT_FOUND)
           .send({ message: 'Пользователь не найден' });
+      } else if (e.name === 'ValidationError') {
+        res
+          .status(STATUS_BAD_REQUEST)
+          .send({ message });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)
