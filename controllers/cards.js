@@ -73,7 +73,7 @@ const cardLikeUpdate = (req, res, method) => {
     .catch((e) => {
       if (e.message === 'Not found') {
         res
-          .status(STATUS_BAD_REQUEST)
+          .status(STATUS_NOT_FOUND)
           .send({ message: 'Карточка не найдена' });
       } else {
         res
