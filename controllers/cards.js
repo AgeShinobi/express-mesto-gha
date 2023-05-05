@@ -9,7 +9,8 @@ const {
 } = require('../config');
 
 const getCards = (req, res) => {
-  Card.find()
+  Card.find({})
+    .populate(['owner', 'likes'])
     .then((cards) => {
       res.send({ data: cards });
     })
@@ -45,14 +46,17 @@ const deleteCard = (req, res) => {
   const { cardId } = req.params;
 
   Card.findByIdAndRemove(cardId)
+    .orFail(() => {
+      throw new Error('Not found');
+    })
     .then((card) => {
       res.send({ deletedCard: card });
     })
     .catch((e) => {
-      if (e.name === 'CastError') {
-        res
-          .status(STATUS_NOT_FOUND)
-          .send({ message: 'Карточка с указанным _id не найдена' });
+      if (e.message === 'Not found') {
+        res.status(STATUS_NOT_FOUND).send({ message: 'Card not found' });
+      } else if (e.name === 'CastError') {
+        res.status(STATUS_BAD_REQUEST).send({ message: 'Указан некорректный _id карточки' });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)
@@ -74,7 +78,11 @@ const cardLikeUpdate = (req, res, method) => {
       if (e.message === 'Not found') {
         res
           .status(STATUS_NOT_FOUND)
-          .send({ message: 'Карточка не найдена' });
+          .send({ message: 'Card not found' });
+      } else if (e.name === 'CastError') {
+        res
+          .status(STATUS_BAD_REQUEST)
+          .send({ message: 'Указан некорректный _id карточки' });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)

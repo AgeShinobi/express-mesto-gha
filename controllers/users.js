@@ -24,14 +24,21 @@ const getUser = (req, res) => {
   const { userId } = req.params;
 
   User.findById(userId)
+    .orFail(() => {
+      throw new Error('Not found');
+    })
     .then((user) => {
       res.send({ data: user });
     })
     .catch((e) => {
       if (e.name === 'CastError') {
         res
+          .status(STATUS_BAD_REQUEST)
+          .send({ message: 'Указан некорректный _id пользователя' });
+      } else if (e.message === 'Not found') {
+        res
           .status(STATUS_NOT_FOUND)
-          .send({ message: 'Пользователь с указанным _id не найден' });
+          .send({ message: 'Пользователя с указанным _id не существует' });
       } else {
         res
           .status(STATUS_INTERNAL_SERVER_ERROR)
