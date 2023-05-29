@@ -2,103 +2,58 @@ const Card = require('../models/card');
 
 const {
   STATUS_CREATED,
-  STATUS_BAD_REQUEST,
-  STATUS_NOT_FOUND,
-  STATUS_INTERNAL_SERVER_ERROR,
-  DEFAULT_ERROR_MESSAGE,
 } = require('../config');
 
-const getCards = (req, res) => {
+const getCards = (req, res, next) => {
   Card.find({})
     .populate(['owner', 'likes'])
     .then((cards) => {
       res.send({ data: cards });
     })
-    .catch(() => {
-      res
-        .status(STATUS_INTERNAL_SERVER_ERROR)
-        .send({ message: DEFAULT_ERROR_MESSAGE });
-    });
+    .catch(next);
 };
 
-const createCard = (req, res) => {
+const createCard = (req, res, next) => {
   const { name, link } = req.body;
   const ownerId = req.user._id;
 
   Card.create({ name, link, owner: ownerId })
     .then((card) => card.populate('owner'))
     .then((card) => res.status(STATUS_CREATED).send({ data: card }))
-    .catch((e) => {
-      const message = Object.values(e.errors).map((err) => err.message).join('; ');
-      if (e.name === 'ValidationError') {
-        res
-          .status(STATUS_BAD_REQUEST)
-          .send({ message });
-      } else {
-        res
-          .status(STATUS_INTERNAL_SERVER_ERROR)
-          .send({ message: DEFAULT_ERROR_MESSAGE });
-      }
-    });
+    .catch(next);
 };
 
-const deleteCard = (req, res) => {
+const deleteCard = (req, res, next) => {
   const { cardId } = req.params;
 
   Card.findByIdAndRemove(cardId)
-    .orFail(() => {
-      throw new Error('Not found');
-    })
+    .orFail()
     .then((card) => {
       res.send({ deletedCard: card });
     })
-    .catch((e) => {
-      if (e.message === 'Not found') {
-        res.status(STATUS_NOT_FOUND).send({ message: 'Card not found' });
-      } else if (e.name === 'CastError') {
-        res.status(STATUS_BAD_REQUEST).send({ message: 'Указан некорректный _id карточки' });
-      } else {
-        res
-          .status(STATUS_INTERNAL_SERVER_ERROR)
-          .send({ message: DEFAULT_ERROR_MESSAGE });
-      }
-    });
+    .catch(next);
 };
 // общая логика likeCard и dislikeCard
-const cardLikeUpdate = (req, res, method) => {
+const cardLikeUpdate = (req, res, method, next) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
     method,
     { new: true },
   )
-    .orFail(() => { throw new Error('Not found'); })
+    .orFail()
     .then((card) => card.populate(['owner', 'likes']))
     .then((card) => res.send({ data: card }))
-    .catch((e) => {
-      if (e.message === 'Not found') {
-        res
-          .status(STATUS_NOT_FOUND)
-          .send({ message: 'Card not found' });
-      } else if (e.name === 'CastError') {
-        res
-          .status(STATUS_BAD_REQUEST)
-          .send({ message: 'Указан некорректный _id карточки' });
-      } else {
-        res
-          .status(STATUS_INTERNAL_SERVER_ERROR)
-          .send({ message: DEFAULT_ERROR_MESSAGE });
-      }
-    });
+    .catch(next);
 };
 
-const likeCard = (req, res) => {
+const likeCard = (req, res, next) => {
   const method = { $addToSet: { likes: req.user._id } };
-  cardLikeUpdate(req, res, method);
+  cardLikeUpdate(req, res, method, next);
 };
 
-const dislikeCard = (req, res) => {
+const dislikeCard = (req, res, next) => {
   const method = { $pull: { likes: req.user._id } };
-  cardLikeUpdate(req, res, method);
+  cardLikeUpdate(req, res, method, next);
 };
 
 module.exports = {

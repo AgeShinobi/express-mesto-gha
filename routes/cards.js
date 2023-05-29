@@ -1,6 +1,9 @@
 /* eslint-disable import/no-extraneous-dependencies */
-const express = require('express');
+const router = require('express').Router();
+const { Joi, celebrate } = require('celebrate');
+const { LINK_REGEX } = require('../config');
 
+// Controllers
 const {
   getCards,
   createCard,
@@ -9,14 +12,36 @@ const {
   dislikeCard,
 } = require('../controllers/cards');
 
-const cardRouter = express.Router();
+// Get all cards
+router.get('/', getCards);
 
-cardRouter.get('/cards', getCards);
-cardRouter.post('/cards', createCard);
-cardRouter.delete('/cards/:cardId', deleteCard);
-cardRouter.put('/cards/:cardId/likes', likeCard);
-cardRouter.delete('/cards/:cardId/likes', dislikeCard);
+// Create card
+router.post('/', celebrate({
+  body: Joi.object().keys({
+    name: Joi.string().required().min(2).max(30),
+    link: Joi.string().required().regex(LINK_REGEX),
+  }),
+}), createCard);
 
-module.exports = {
-  cardRouter,
-};
+// Delete card
+router.delete('/:cardId', celebrate({
+  params: Joi.object().keys({
+    cardId: Joi.string().required().hex().length(24),
+  }),
+}), deleteCard);
+
+// Like card
+router.put('/:cardId/likes', celebrate({
+  params: Joi.object().keys({
+    cardId: Joi.string().required().hex().length(24),
+  }),
+}), likeCard);
+
+// Dislike card
+router.delete('/:cardId/likes', celebrate({
+  params: Joi.object().keys({
+    cardId: Joi.string().required().hex().length(24),
+  }),
+}), dislikeCard);
+
+module.exports = router;

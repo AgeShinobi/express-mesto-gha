@@ -1,148 +1,131 @@
+/* eslint-disable import/no-extraneous-dependencies */
+// Packages
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+// Models
 const User = require('../models/user');
 
+// Config
 const {
   STATUS_CREATED,
-  STATUS_BAD_REQUEST,
-  STATUS_NOT_FOUND,
-  STATUS_INTERNAL_SERVER_ERROR,
-  DEFAULT_ERROR_MESSAGE,
 } = require('../config');
 
-const getUsers = (req, res) => {
-  User.find()
+// Get all users
+const getUsers = (req, res, next) => {
+  User.find({})
     .then((users) => {
       res.send({ data: users });
     })
-    .catch(() => {
-      res
-        .status(STATUS_INTERNAL_SERVER_ERROR)
-        .send({ message: DEFAULT_ERROR_MESSAGE });
-    });
+    .catch(next);
 };
 
-const getUser = (req, res) => {
-  const { userId } = req.params;
-
-  User.findById(userId)
+// Общий метод для поиска пользователя по ID
+const findUserById = (req, res, data, next) => {
+  User.findById(data)
     .orFail(() => {
-      throw new Error('Not found');
     })
-    .then((user) => {
-      res.send({ data: user });
-    })
-    .catch((e) => {
-      if (e.name === 'CastError') {
-        res
-          .status(STATUS_BAD_REQUEST)
-          .send({ message: 'Указан некорректный _id пользователя' });
-      } else if (e.message === 'Not found') {
-        res
-          .status(STATUS_NOT_FOUND)
-          .send({ message: 'Пользователя с указанным _id не существует' });
-      } else {
-        res
-          .status(STATUS_INTERNAL_SERVER_ERROR)
-          .send({ message: DEFAULT_ERROR_MESSAGE });
-      }
-    });
+    .then((user) => res.send(user))
+    .catch(next);
 };
 
-const createUser = (req, res) => {
-  const { name, about, avatar } = req.body;
-
-  User.create({ name, about, avatar })
-    .then((user) => {
-      res.status(STATUS_CREATED).send({ data: user });
-    })
-    .catch((e) => {
-      if (e.name === 'ValidationError') {
-        res
-          .status(STATUS_BAD_REQUEST)
-          .send({ message: 'Переданы некорректные данные при создании пользователя' });
-      } else {
-        res
-          .status(STATUS_INTERNAL_SERVER_ERROR)
-          .send({ message: DEFAULT_ERROR_MESSAGE });
-      }
-    });
+// Get my info ( route - /me )
+const getMyInfo = (req, res, next) => {
+  const data = req.user._id;
+  findUserById(req, res, data, next);
 };
 
-const updateUserInfo = (req, res) => {
+// Get user by userId
+const getUser = (req, res, next) => {
+  const data = req.params.userId;
+  findUserById(req, res, data, next);
+};
+
+// Create user
+const createUser = (req, res, next) => {
+  const {
+    name,
+    about,
+    avatar,
+    email,
+    password,
+  } = req.body;
+  bcrypt.hash(password, 10)
+    .then((hash) => User.create({
+      name,
+      about,
+      avatar,
+      email,
+      password: hash,
+    }))
+    .then((user) => {
+      const data = user.toObject();
+      delete data.password;
+      res
+        .status(STATUS_CREATED)
+        .send(data);
+    })
+    .catch(next);
+};
+
+// Update user info
+const updateUserInfo = (req, res, next) => {
   const id = req.user._id;
   const { name, about } = req.body;
 
   User.findByIdAndUpdate(
     id,
     { name, about },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { new: true, runValidators: true },
   )
-    .orFail(() => {
-      throw new Error('Not found');
-    })
+    .orFail()
     .then((user) => {
       res.send({ user });
     })
-    .catch((e) => {
-      const message = Object.values(e.errors).map((err) => err.message).join('; ');
-      if (e.message === 'Not found') {
-        res
-          .status(STATUS_NOT_FOUND)
-          .send({ message: 'Пользователь не найден' });
-      } else if (e.name === 'ValidationError') {
-        res
-          .status(STATUS_BAD_REQUEST)
-          .send({ message });
-      } else {
-        res
-          .status(STATUS_INTERNAL_SERVER_ERROR)
-          .send({ message: DEFAULT_ERROR_MESSAGE });
-      }
-    });
+    .catch(next);
 };
 
-const updateAvatar = (req, res) => {
+// Update avatar info
+const updateAvatar = (req, res, next) => {
   const id = req.user._id;
   const { avatar } = req.body;
 
   User.findByIdAndUpdate(
     id,
     { avatar },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { new: true, runValidators: true },
   )
-    .orFail(() => {
-      throw new Error('Not found');
-    })
+    .orFail()
     .then((user) => {
       res.send({ user });
     })
-    .catch((e) => {
-      const message = Object.values(e.errors).map((err) => err.message).join('; ');
-      if (e.message === 'Not found') {
-        res
-          .status(STATUS_NOT_FOUND)
-          .send({ message: 'Пользователь не найден' });
-      } else if (e.name === 'ValidationError') {
-        res
-          .status(STATUS_BAD_REQUEST)
-          .send({ message });
-      } else {
-        res
-          .status(STATUS_INTERNAL_SERVER_ERROR)
-          .send({ message: DEFAULT_ERROR_MESSAGE });
-      }
-    });
+    .catch(next);
 };
 
+// Login
+const login = (req, res, next) => {
+  const { email, password } = req.body;
+
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, 'super-strong-password', { expiresIn: '7d' });
+      res.cookie('jwt', token, {
+        maxAge: 3600000 * 24 * 7,
+        httpOnly: true,
+        sameSite: true,
+      });
+      res.send({ message: 'Вход выполнен успешно' });
+    })
+    .catch(next);
+};
+
+// Exports
 module.exports = {
   getUsers,
+  getMyInfo,
   getUser,
   createUser,
   updateUserInfo,
   updateAvatar,
+  login,
 };
