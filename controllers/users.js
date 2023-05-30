@@ -7,9 +7,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
 // Config
-const {
-  STATUS_CREATED,
-} = require('../config');
+const { STATUS_CREATED } = require('../config');
+
+const { NODE_ENV, JWT_SECRET } = process.env;
 
 // Get all users
 const getUsers = (req, res, next) => {
@@ -23,8 +23,7 @@ const getUsers = (req, res, next) => {
 // Общий метод для поиска пользователя по ID
 const findUserById = (req, res, data, next) => {
   User.findById(data)
-    .orFail(() => {
-    })
+    .orFail()
     .then((user) => res.send(user))
     .catch(next);
 };
@@ -108,7 +107,11 @@ const login = (req, res, next) => {
 
   return User.findUserByCredentials(email, password)
     .then((user) => {
-      const token = jwt.sign({ _id: user._id }, 'super-strong-password', { expiresIn: '7d' });
+      const token = jwt.sign(
+        { _id: user._id },
+        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret-key',
+        { expiresIn: '7d' },
+      );
       res.cookie('jwt', token, {
         maxAge: 3600000 * 24 * 7,
         httpOnly: true,
