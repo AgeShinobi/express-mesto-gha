@@ -14,15 +14,15 @@ const {
 // Get all users
 router.get('/', getUsers);
 
+// Get my info
+router.get('/me', getMyInfo);
+
 // Find user with UserId
 router.get('/:userId', celebrate({
   params: Joi.object().keys({
     userId: Joi.string().required().hex().length(24),
   }),
 }), getUser);
-
-// Get my info
-router.get('/me', getMyInfo);
 
 // Update 'name' & 'about'
 router.patch('/me', celebrate({
