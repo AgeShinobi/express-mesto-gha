@@ -3,6 +3,7 @@ const Card = require('../models/card');
 const {
   STATUS_CREATED,
 } = require('../config');
+const ForbiddenError = require('../errors/forbiddenError');
 
 const getCards = (req, res, next) => {
   Card.find({})
@@ -24,12 +25,18 @@ const createCard = (req, res, next) => {
 };
 
 const deleteCard = (req, res, next) => {
-  const { cardId } = req.params;
-
-  Card.findByIdAndRemove(cardId)
+  Card.findById(req.params.cardId)
     .orFail()
     .then((card) => {
-      res.send({ deletedCard: card });
+      Card.deleteOne({ _id: card._id, owner: req.user._id })
+        .then((result) => {
+          if (result.deletedCount === 0) {
+            throw new ForbiddenError('Данная карточка принадлежит другому пользователю');
+          } else {
+            res.send({ message: 'Пост удален успешно' });
+          }
+        })
+        .catch(next);
     })
     .catch(next);
 };
